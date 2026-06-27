@@ -688,6 +688,23 @@ midiPlayer.defaultLayout();
 applyTheme(midiPlayer);
 document.getElementById("midi-player").appendChild(midiPlayer.root);
 
+// Sync visualizer timeOffset with startDelay so notes appear on screen
+// before audio starts. timeOffset = -startDelay shifts the note display
+// backward in time by the same amount as the audio start delay.
+function applyStartDelay(delay) {
+  midy.startDelay = delay;
+  worker.postMessage({
+    type: "call",
+    method: "updateOption",
+    args: ["timeOffset", -delay],
+  });
+}
+applyStartDelay(2);
+
+document.getElementById("startDelay").addEventListener("change", (event) => {
+  applyStartDelay(parseFloat(event.currentTarget.value));
+});
+
 // Drive the visualizer with a rAF loop on the main thread.
 // midy.currentTime() returns the current MIDI playback position in seconds,
 // exactly matching the scheduled audio. Use it directly.
