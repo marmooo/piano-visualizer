@@ -38,26 +38,6 @@
       }
       #controls { width:220px; }
       #controls h6 { cursor:grab; }
-      html[data-bs-theme="dark"] .btn-light {
-        --bs-btn-color: #fff;
-        --bs-btn-bg: var(--bs-gray-800);
-        --bs-btn-border-color: var(--bs-gray-800);
-        --bs-btn-hover-color: #fff;
-        --bs-btn-hover-bg: var(--bs-gray-700);
-        --bs-btn-hover-border-color: var(--bs-gray-600);
-        --bs-btn-active-color: #fff;
-        --bs-btn-active-bg: var(--bs-gray-600);
-        --bs-btn-active-border-color: var(--bs-gray-500);
-      }
-      @font-face {
-        font-family: "MIDIPlayerIcons";
-        src: url("https://marmooo.github.io/midi-player/midi-player-icons.woff2") format("woff2");
-      }
-      .midi-player-btn {
-        font-family: MIDIPlayerIcons;
-        font-size: 24px;
-        line-height: 1;
-      }
       #midi-player { height:34px; }
       html[data-bs-theme="dark"] .favicon { filter: invert(1) hue-rotate(180deg); }
     </style>
@@ -272,6 +252,7 @@
       <div class="text-muted">&copy; <a href="https://github.com/marmooo">marmooo</a></div>
     </footer>
     <div class="drop-inline-css p-1
+      btn bg-light-subtle p-1 form-range
       form-check form-check-label
       d-flex flex-column align-items-center small
       d-none">

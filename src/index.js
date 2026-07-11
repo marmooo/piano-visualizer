@@ -89,22 +89,6 @@ class Draggable {
   }
 }
 
-function applyTheme(midiPlayer) {
-  const root = midiPlayer.root;
-  for (const btn of root.getElementsByClassName("midi-player-btn")) {
-    btn.classList.add("btn", "btn-light", "p-1");
-  }
-  for (const btn of root.getElementsByClassName("midi-player-text")) {
-    btn.classList.add("p-1");
-  }
-  for (const btn of root.getElementsByClassName("midi-player-range")) {
-    btn.classList.add("form-range", "p-1");
-  }
-  for (const btn of root.getElementsByClassName("volume")) {
-    btn.classList.add("w-auto");
-  }
-}
-
 function toggleDarkMode() {
   const html = document.documentElement;
   const newTheme = html.getAttribute("data-bs-theme") === "dark"
@@ -125,6 +109,18 @@ function shuffle(array) {
     [array[k], array[i - 1]] = [array[i - 1], array[k]];
   }
   return array;
+}
+
+function getGlobalCSS() {
+  const sheet = new CSSStyleSheet();
+  let css = "";
+  for (const s of document.styleSheets) {
+    try {
+      for (const r of s.cssRules) css += r.cssText;
+    } catch { /* skip cross-origin sheets */ }
+  }
+  sheet.replaceSync(css);
+  return sheet;
 }
 
 function setSampleEvents() {
@@ -685,7 +681,11 @@ if (audioContext.state === "running") await audioContext.suspend();
 const midy = new Midy(audioContext);
 const midiPlayer = new MIDIPlayer(midy);
 midiPlayer.defaultLayout();
-applyTheme(midiPlayer);
+midiPlayer.applyTheme(getGlobalCSS(), {
+  "midi-player-btn": "btn bg-light-subtle p-1",
+  "midi-player-text": "p-1",
+  "midi-player-range": "form-range",
+});
 document.getElementById("midi-player").appendChild(midiPlayer.root);
 
 // Sync visualizer timeOffset with startDelay so notes appear on screen
