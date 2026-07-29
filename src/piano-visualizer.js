@@ -1,3 +1,5 @@
+import { particleEffects } from "./effects.js";
+
 const defaultChannelColors = [
   "#ff6666",
   "#ff9966",
@@ -135,8 +137,7 @@ const defaultOptions = {
     gradientColors: ["rgba(255,255,255,0.2)", "rgba(0,0,0,0.2)"],
   },
   particleOptions: {
-    drawMethod: "roundRect",
-    type: "burst", // "burst" | "spark" (future)
+    type: "burst", // "none" | "burst" | "spark" | "steam" | "electric" | "fire" | "star" | "bubble" | "confetti"
   },
   noteDirection: "down",
   showPiano: "piano", // "piano" | "line" | "none"
@@ -149,7 +150,6 @@ const defaultOptions = {
   effects: {
     glow: false,
     glowBlur: 20,
-    particle: true,
     bounce: false,
     ignite: false,
     pianoPosition: 0.0, // 0 = piano at default edge, 1 = piano at opposite edge
@@ -414,6 +414,9 @@ export class PianoVisualizer {
         this.#recolorNotes();
         this.renderKeyboard();
       },
+      // "particleOptions.type": () => {
+      //   this.#particles.length = 0;
+      // },
     };
     hooks[path]?.();
   }
@@ -569,7 +572,7 @@ export class PianoVisualizer {
   // ---- Private: render ---------------------------------------------------
 
   #render(t, dtMs) {
-    const { showPiano, effects } = this.options;
+    const { showPiano } = this.options;
     this.#renderNotes(t);
     if (showPiano === "piano") {
       this.#updateActiveKeys(t);
@@ -585,7 +588,8 @@ export class PianoVisualizer {
     if (showPiano === "line") {
       this.#renderLineLayer();
     }
-    if (effects.particle) {
+    const particleType = this.options.particleOptions.type || "none";
+    if (particleType !== "none") {
       this.#updateParticles(dtMs / 1000);
       this.#renderParticles();
     } else if (this.#particles.length) {
@@ -1092,7 +1096,7 @@ export class PianoVisualizer {
 
   #checkNoteHit(note, pos, color, t) {
     if (note.hit) return;
-    const { noteDirection, effects } = this.options;
+    const { noteDirection } = this.options;
     let hit = false;
     switch (noteDirection) {
       case "down":
@@ -1111,7 +1115,7 @@ export class PianoVisualizer {
     if (!hit) return;
     note.hit = true;
     note.hitTime = t;
-    if (!effects.particle) return;
+    if ((this.options.particleOptions.type || "none") === "none") return;
     let sx = pos.x + pos.w / 2, sy = pos.y + pos.h / 2;
     if (noteDirection === "down") sy = this.pianoY + 4;
     if (noteDirection === "up") sy = this.pianoY + this.keyHeight - 4;
@@ -1277,54 +1281,24 @@ export class PianoVisualizer {
   // ---- Private: particles ------------------------------------------------
 
   #spawnParticles(x, y, color) {
-    const n = 14 + Math.floor(Math.random() * 8);
-    for (let i = 0; i < n; i++) {
-      const speed = 80 + Math.random() * 200;
-      const ang = Math.random() * Math.PI * 2;
-      this.#particles.push({
-        x: x + (Math.random() - 0.5) * 8,
-        y: y + (Math.random() - 0.5) * 8,
-        vx: Math.cos(ang) * speed * (0.4 + Math.random() * 1.2),
-        vy: Math.sin(ang) * speed * (0.4 + Math.random() * 1.2),
-        life: 0.6 + Math.random() * 0.9,
-        maxLife: 0.6 + Math.random() * 0.9,
-        color,
-      });
-    }
+    const type = this.options.particleOptions.type || "burst";
+    const effect = particleEffects[type] ?? particleEffects.burst;
+    effect.spawn(x, y, color, this.#particles, this.options.particleOptions);
   }
 
   #updateParticles(dt) {
-    const gravity = 400;
-    let wi = 0;
-    for (const p of this.#particles) {
-      p.vy += gravity * dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.life -= dt;
-      if (p.life > 0) this.#particles[wi++] = p;
-    }
-    this.#particles.length = wi;
+    const type = this.options.particleOptions.type || "burst";
+    const effect = particleEffects[type] ?? particleEffects.burst;
+    effect.update(this.#particles, dt);
   }
 
   #renderParticles() {
     const ctx = this.particleCtx;
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    const { drawMethod } = this.options.particleOptions;
-    // Setting ctx.fillStyle re-parses the color string even when unchanged,
-    // so skip the assignment when consecutive particles share a color
-    // (common since #spawnParticles emits a burst of same-colored particles).
-    let lastColor = null;
-    for (const p of this.#particles) {
-      const alpha = Math.max(0, Math.min(1, p.life / p.maxLife));
-      ctx.globalAlpha = alpha;
-      if (p.color !== lastColor) {
-        ctx.fillStyle = p.color;
-        lastColor = p.color;
-      }
-      const size = 4 + 5 * (1 - alpha);
-      this.#fillShape(ctx, { x: p.x, y: p.y, w: size, h: size }, drawMethod);
-    }
-    ctx.globalAlpha = 1;
+    if (!this.#particles.length) return;
+    const type = this.options.particleOptions.type || "burst";
+    const effect = particleEffects[type] ?? particleEffects.burst;
+    effect.render(ctx, this.#particles, this.options.particleOptions);
   }
 
   // ---- Private: shared shape drawing -------------------------------------

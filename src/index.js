@@ -449,7 +449,6 @@ for (
 for (
   const option of [
     "effects.glow",
-    "effects.particle",
     "effects.bounce",
     "effects.ignite",
     "noteOptions.fadeEffect",
@@ -457,6 +456,17 @@ for (
     "keyboardOptions.pressEffect",
   ]
 ) {
+  document.getElementById("particleOptions.type").addEventListener(
+    "change",
+    (event) => {
+      worker.postMessage({
+        type: "call",
+        method: "updateOption",
+        args: ["particleOptions.type", event.currentTarget.value],
+      });
+      nudge();
+    },
+  );
   document.getElementById(option).addEventListener("change", (event) => {
     worker.postMessage({
       type: "call",

@@ -47,7 +47,8 @@ Stroke Dash
 <input class=form-range type=range id=fogOptions.opacity min=0 max=1 step=0.05 value=0.85>
 </label><label class=d-block>Size:
 <input class=form-range type=range id=fogOptions.size min=0.05 max=0.6 step=0.01 value=0.25></label></details><details><summary>Effects</summary><label class="form-check form-check-inline"><input class=form-check-input type=checkbox id=effects.glow>Glow (cost++)</label>
-<label class="form-check form-check-inline"><input class=form-check-input type=checkbox id=effects.particle checked>Particle (cost+)</label><hr><label class="form-check form-check-inline"><input class=form-check-input type=checkbox id=noteOptions.fadeEffect>Fade</label>
+<label class=d-block><select class="form-select form-select-sm d-inline-block w-auto" id=particleOptions.type><option value=none>None<option value=burst selected>Burst<option value=spark>Spark<option value=steam>Steam<option value=electric>Electric<option value=fire>Fire<option value=star>Star<option value=bubble>Bubble<option value=confetti>Confetti</select>
+Particle</label><hr><label class="form-check form-check-inline"><input class=form-check-input type=checkbox id=noteOptions.fadeEffect>Fade</label>
 <label class="form-check form-check-inline"><input class=form-check-input type=checkbox id=effects.bounce>Bounce</label>
 <label class="form-check form-check-inline"><input class=form-check-input type=checkbox id=effects.ignite>Ignite</label></details><details><summary>Record</summary><button id=recordBtn type=button class="btn btn-sm btn-danger mb-2 w-100">
 ⏺ Start

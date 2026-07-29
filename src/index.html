@@ -239,7 +239,20 @@
           <details>
             <summary>Effects</summary>
             <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="effects.glow">Glow (cost++)</label>
-            <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="effects.particle" checked>Particle (cost+)</label>
+            <label class="d-block">
+              <select class="form-select form-select-sm d-inline-block w-auto" id="particleOptions.type">
+                <option value="none">None</option>
+                <option value="burst" selected>Burst</option>
+                <option value="spark">Spark</option>
+                <option value="steam">Steam</option>
+                <option value="electric">Electric</option>
+                <option value="fire">Fire</option>
+                <option value="star">Star</option>
+                <option value="bubble">Bubble</option>
+                <option value="confetti">Confetti</option>
+              </select>
+              Particle
+            </label>
             <hr>
             <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="noteOptions.fadeEffect">Fade</label>
             <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="effects.bounce">Bounce</label>
