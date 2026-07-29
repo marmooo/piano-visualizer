@@ -431,7 +431,7 @@ for (
     "noteDirection",
     "speedFactor",
     "scrollDistanceFactor",
-    "noteOptions.noteSizeFactor",
+    "noteOptions.thickness",
     "keyboardOptions.keyAspectRatio",
     "effects.pianoPosition",
   ]

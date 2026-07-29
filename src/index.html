@@ -157,31 +157,39 @@
               </select>
               Piano / Line
             </label>
-            <label class="d-block">Piano Position:
+            <label class="d-block">Piano / Line Position:
               <input class="form-range" type="range" id="effects.pianoPosition" min="0" max="1" step="0.05" value="0">
             </label>
-            <label class="d-block">Note Size Factor:
-              <input class="form-range" type="range" id="noteOptions.noteSizeFactor" min="0.1" max="2" step="0.05" value="0.7">
+          </details>
+          <details>
+            <summary>Colors</summary>
+            <div id="channelColorPickers" class="d-flex flex-wrap gap-2 pt-1 pb-3"></div>
+          </details>
+          <details>
+            <summary>Piano</summary>
+            <label class="d-block">Opacity:
+              <input class="form-range" type="range" id="keyboardOptions.opacity" min="0" max="1" step="0.05" value="1">
             </label>
+            <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="keyboardOptions.gradientEffect">Gradient</label>
+            <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="keyboardOptions.pressEffect" checked>Press</label>
             <label class="d-block">Key Aspect Ratio (H / W):
               <input class="form-range" type="range" id="keyboardOptions.keyAspectRatio" min="1" max="8" step="0.1" value="4">
             </label>
           </details>
           <details>
-            <summary>Colors</summary>
-            <label class="d-block">Piano Opacity:
-              <input class="form-range" type="range" id="keyboardOptions.opacity" min="0" max="1" step="0.05" value="1">
-            </label>
-            <label class="d-block">Line Color:
-              <input type="color" id="lineOptions.color" value="#888888" class="form-control form-control-color d-inline-block">
-            </label>
-            <label class="d-block">Line Opacity:
+            <summary>Line</summary>
+            <label class="d-block">Opacity:
               <input class="form-range" type="range" id="lineOptions.opacity" min="0" max="1" step="0.05" value="1">
             </label>
-            <div id="channelColorPickers" class="d-flex flex-wrap gap-2 pt-1 pb-3"></div>
+            <label class="d-block">Color:
+              <input type="color" id="lineOptions.color" value="#888888" class="form-control form-control-color d-inline-block">
+            </label>
           </details>
           <details>
             <summary>Note</summary>
+            <label class="d-block">Thickness:
+              <input class="form-range" type="range" id="noteOptions.thickness" min="0.1" max="2" step="0.05" value="0.7">
+            </label>
             <label class="d-block">Opacity:
               <input class="form-range" type="range" id="noteOpacity" min="0" max="1" step="0.05" value="1">
             </label>
@@ -236,9 +244,6 @@
             <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="noteOptions.fadeEffect">Fade</label>
             <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="effects.bounce">Bounce</label>
             <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="effects.ignite">Ignite</label>
-            <hr>
-            <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="keyboardOptions.gradientEffect">Gradient</label>
-            <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="keyboardOptions.pressEffect" checked>Press</label>
           </details>
           <details>
             <summary>Record</summary>

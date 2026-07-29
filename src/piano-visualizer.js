@@ -113,7 +113,7 @@ const defaultOptions = {
   noteOptions: {
     drawMethod: "roundRect",
     borderRadius: 0.2,
-    noteSizeFactor: 0.7,
+    thickness: 0.7,
     defaultNoteColor: "#3399ff",
     fadeEffect: false,
     strokeOnly: false,
@@ -372,7 +372,7 @@ export class PianoVisualizer {
     this.renderKeyboard();
   }
 
-  // Dot-path option update: "effects.glow", "noteOptions.noteSizeFactor", etc.
+  // Dot-path option update: "effects.glow", "noteOptions.thickness", etc.
   updateOption(path, value) {
     const keys = path.split(".");
     let target = this.options;
@@ -401,7 +401,7 @@ export class PianoVisualizer {
       },
       "speedFactor": () => this.#computeScrollSpeed(),
       "scrollDistanceFactor": () => this.#computeScrollSpeed(),
-      "noteOptions.noteSizeFactor": () => this.renderKeyboard(),
+      "noteOptions.thickness": () => this.renderKeyboard(),
       "keyboardOptions.keyAspectRatio": () =>
         this.resize(this.width, this.height),
       "keyboardOptions.opacity": () => this.renderKeyboard(),
@@ -942,7 +942,7 @@ export class PianoVisualizer {
   #calcNotePosition(note, t, startPos) {
     const {
       noteDirection,
-      noteOptions: { noteSizeFactor },
+      noteOptions: { thickness },
       keyboardOptions: { blackKeyWidthFactor, blackKeyHeightFactor },
     } = this.options;
     const isBlack = isBlackTable[note.noteNumber % 12];
@@ -967,7 +967,7 @@ export class PianoVisualizer {
     const offset = (t - note.startTime) * this.scrollSpeed + distance;
 
     if (isVertical) {
-      const w = this.keyWidth * noteSizeFactor *
+      const w = this.keyWidth * thickness *
         (isBlack ? blackKeyWidthFactor : 1);
       const h = note.duration * this.scrollSpeed *
         (isBlack ? blackKeyHeightFactor : 1);
@@ -981,7 +981,7 @@ export class PianoVisualizer {
       return { x, y, w, h };
     } else {
       const w = note.duration * this.scrollSpeed;
-      const h = this.keyHeight * noteSizeFactor *
+      const h = this.keyHeight * thickness *
         (isBlack ? blackKeyHeightFactor : 1);
       // "right": startPos.x=0, t=startTime → x+w = 0+pianoX-w+w = pianoX ✓
       // "left":  startPos.x=width, t=startTime → x = width-distance = pianoX+keyWidth ✓
