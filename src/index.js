@@ -866,7 +866,7 @@ function cleanupRecording() {
   isRecording = false;
   recordedChunks = [];
   const btn = document.getElementById("recordBtn");
-  btn.textContent = "⏺ Record";
+  btn.textContent = "⏺ Start";
   btn.classList.replace("btn-warning", "btn-danger");
 }
 
