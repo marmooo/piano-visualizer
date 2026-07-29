@@ -240,6 +240,37 @@
             <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="keyboardOptions.gradientEffect">Gradient</label>
             <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="keyboardOptions.pressEffect" checked>Press</label>
           </details>
+          <details>
+            <summary>Record</summary>
+            <button id="recordBtn" type="button" class="btn btn-sm btn-danger mb-2 w-100">
+              ⏺ Record
+            </button>
+            <label class="d-block">FPS:
+              <select class="form-select form-select-sm" id="recordFps">
+                <option value="15">15</option>
+                <option value="24">24</option>
+                <option value="30" selected>30</option>
+                <option value="60">60</option>
+              </select>
+            </label>
+            <label class="d-block">Quality:
+              <select class="form-select form-select-sm" id="recordQuality">
+                <option value="2000000">Low (2 Mbps)</option>
+                <option value="5000000">Medium (5 Mbps)</option>
+                <option value="8000000" selected>High (8 Mbps)</option>
+                <option value="15000000">Very High (15 Mbps)</option>
+              </select>
+            </label>
+            <label class="d-block">Resolution:
+              <select class="form-select form-select-sm" id="recordResolution">
+                <option value="1" selected>Display (1×)</option>
+                <option value="1.5">1.5×</option>
+                <option value="2">2× (Retina)</option>
+                <option value="720">720p height</option>
+                <option value="1080">1080p height</option>
+              </select>
+            </label>
+          </details>
         </nav>
       </div>
     </main>

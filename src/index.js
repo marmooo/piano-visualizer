@@ -689,6 +689,202 @@ midiPlayer.applyTheme(getGlobalCSS(), {
 });
 document.getElementById("midi-player").appendChild(midiPlayer.root);
 
+// ---- Video recording (canvas composite + audio from midy.masterVolume) ----
+
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordRafId = null;
+let recordStreamDest = null;
+let isRecording = false;
+
+const recordCanvas = document.createElement("canvas");
+const recordCtx = recordCanvas.getContext("2d");
+
+function getSupportedMimeType() {
+  const candidates = [
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm;codecs=vp9",
+    "video/webm;codecs=vp8",
+    "video/webm",
+  ];
+  for (const t of candidates) {
+    if (MediaRecorder.isTypeSupported(t)) return t;
+  }
+  return "";
+}
+
+function getRecordSize() {
+  const baseW = mainCanvas.clientWidth;
+  const baseH = mainCanvas.clientHeight;
+  const res = document.getElementById("recordResolution").value;
+
+  if (res === "720" || res === "1080") {
+    const targetH = Number(res);
+    const scale = targetH / baseH;
+    return {
+      w: Math.round(baseW * scale),
+      h: targetH,
+    };
+  }
+  const scale = parseFloat(res) || 1;
+  return {
+    w: Math.round(baseW * scale),
+    h: Math.round(baseH * scale),
+  };
+}
+
+function drawRecordFrame() {
+  const { w, h } = getRecordSize();
+  if (recordCanvas.width !== w || recordCanvas.height !== h) {
+    recordCanvas.width = w;
+    recordCanvas.height = h;
+  }
+  recordCtx.fillStyle = "#000";
+  recordCtx.fillRect(0, 0, w, h);
+
+  if (
+    !backgroundImageEl.hidden && backgroundImageEl.complete &&
+    backgroundImageEl.naturalWidth
+  ) {
+    drawCover(recordCtx, backgroundImageEl, w, h);
+  } else if (!backgroundVideoEl.hidden && backgroundVideoEl.readyState >= 2) {
+    drawCover(recordCtx, backgroundVideoEl, w, h);
+  }
+
+  for (const c of [mainCanvas, particleCanvas, keyboardCanvas, lineCanvas]) {
+    if (c.style.display === "none") continue;
+    try {
+      recordCtx.drawImage(c, 0, 0, w, h);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/** object-fit: cover */
+function drawCover(ctx, media, dw, dh) {
+  const sw = media.videoWidth || media.naturalWidth || media.width;
+  const sh = media.videoHeight || media.naturalHeight || media.height;
+  if (!sw || !sh) return;
+  const scale = Math.max(dw / sw, dh / sh);
+  const tw = sw * scale;
+  const th = sh * scale;
+  const ox = (dw - tw) / 2;
+  const oy = (dh - th) / 2;
+  ctx.drawImage(media, ox, oy, tw, th);
+}
+
+function startRecordLoop() {
+  if (recordRafId !== null) return;
+  function loop() {
+    drawRecordFrame();
+    recordRafId = requestAnimationFrame(loop);
+  }
+  recordRafId = requestAnimationFrame(loop);
+}
+
+function stopRecordLoop() {
+  if (recordRafId !== null) {
+    cancelAnimationFrame(recordRafId);
+    recordRafId = null;
+  }
+}
+
+async function startRecording() {
+  if (isRecording) return;
+  if (audioContext.state === "suspended") await audioContext.resume();
+
+  const mimeType = getSupportedMimeType();
+  if (!mimeType) {
+    alert("MediaRecorder is not supported in this browser.");
+    return;
+  }
+
+  const fps = parseInt(document.getElementById("recordFps").value, 10) || 30;
+  const videoBitsPerSecond =
+    parseInt(document.getElementById("recordQuality").value, 10) || 8_000_000;
+
+  drawRecordFrame();
+
+  const videoStream = recordCanvas.captureStream(fps);
+
+  recordStreamDest = audioContext.createMediaStreamDestination();
+  midy.masterVolume.connect(recordStreamDest);
+
+  const stream = new MediaStream([
+    ...videoStream.getVideoTracks(),
+    ...recordStreamDest.stream.getAudioTracks(),
+  ]);
+
+  recordedChunks = [];
+  mediaRecorder = new MediaRecorder(stream, {
+    mimeType,
+    videoBitsPerSecond,
+  });
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data.size > 0) recordedChunks.push(e.data);
+  };
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(recordedChunks, { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `piano-visualizer-${Date.now()}.webm`;
+    a.click();
+    URL.revokeObjectURL(url);
+    cleanupRecording();
+  };
+
+  mediaRecorder.start(1000);
+  isRecording = true;
+  startRecordLoop();
+
+  const btn = document.getElementById("recordBtn");
+  btn.textContent = "⏹ Stop";
+  btn.classList.replace("btn-danger", "btn-warning");
+}
+
+function stopRecording() {
+  if (!isRecording || !mediaRecorder) return;
+  if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
+  // onstop → cleanupRecording
+}
+
+function cleanupRecording() {
+  stopRecordLoop();
+  if (recordStreamDest) {
+    try {
+      midy.masterVolume.disconnect(recordStreamDest);
+    } catch { /* already disconnected */ }
+    recordStreamDest = null;
+  }
+  if (mediaRecorder) {
+    mediaRecorder.stream.getTracks().forEach((t) => t.stop());
+    mediaRecorder = null;
+  }
+  isRecording = false;
+  recordedChunks = [];
+  const btn = document.getElementById("recordBtn");
+  btn.textContent = "⏺ Record";
+  btn.classList.replace("btn-warning", "btn-danger");
+}
+
+document.getElementById("recordBtn").addEventListener("click", () => {
+  if (isRecording) stopRecording();
+  else startRecording();
+});
+
+// stop recording when playback ends
+midy.addEventListener("stopped", () => {
+  if (isRecording) stopRecording();
+});
+midy.addEventListener("ended", () => {
+  if (isRecording) stopRecording();
+});
+
+// ---- Visualizer playback sync ------------------------------------------
+
 // Sync visualizer timeOffset with startDelay so notes appear on screen
 // before audio starts. timeOffset = -startDelay shifts the note display
 // backward in time by the same amount as the audio start delay.
