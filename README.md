@@ -254,7 +254,7 @@ automatically.
 visualizer.updateOption("noteDirection", "up");
 visualizer.updateOption("effects.glow", true);
 visualizer.updateOption("effects.ignite", true);
-visualizer.updateOption("noteOptions.noteSizeFactor", 0.9);
+visualizer.updateOption("noteOptions.thickness", 0.9);
 visualizer.updateOption("noteOptions.strokeOnly", true);
 visualizer.updateOption("noteOptions.strokeDash", "dashed"); // "none" | "dotted" | "dashed"
 visualizer.updateOption("keyboardOptions.keyAspectRatio", 5);
@@ -296,7 +296,6 @@ visualizer.onEnded = () => console.log("playback complete");
   effects: {
     glow: false,
     glowBlur: 20,
-    particle: true,
     bounce: false,
     ignite: false,              // notes are dim until they hit the piano/line
     pianoPosition: 0.0,         // 0 = default edge, 1 = opposite edge
@@ -348,7 +347,7 @@ visualizer.onEnded = () => console.log("playback complete");
   },
 
   particleOptions: {
-    drawMethod: "roundRect",
+    type: "burst",              // "none" | "burst" | "spark" | "steam" | "electric" | "fire" | "star" | "bubble" | "confetti"
   },
 }
 ```
