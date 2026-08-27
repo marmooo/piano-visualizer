@@ -1,6 +1,94 @@
 import { Midy } from "https://cdn.jsdelivr.net/gh/marmooo/midy@0.6.3/dist/midy.min.js";
 import { MIDIPlayer } from "https://cdn.jsdelivr.net/npm/@marmooo/midi-player@0.0.8/+esm";
 import { extractNotesFromMidy } from "./piano-visualizer.js";
+import { Modal } from "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/+esm";
+import { MidiLibrary } from "https://marmooo.github.io/free-midi/midi-library.js";
+
+const htmlLang = document.documentElement.lang;
+const globalCSS = getGlobalCSS();
+
+// ---------------------------------------------------------------------------
+// midi library
+// ---------------------------------------------------------------------------
+
+const libraryModal = Modal.getOrCreateInstance(
+  document.getElementById("screenLibrary"),
+);
+Modal.getOrCreateInstance(
+  document.getElementById("soundFontLibraryModal"),
+);
+
+const midiLibrary = new MidiLibrary({
+  table: "libraryTable",
+  pagination: "libraryPagination",
+  columns: "libraryColumns",
+  collections: "libraryCollections",
+  instruments: "libraryInstruments",
+  lang: htmlLang,
+  onSelect: async (row) => {
+    const buf = await (await fetch(`https://midi-db.pages.dev/${row.file}`))
+      .arrayBuffer();
+    await midiPlayer.handleStop();
+    // loadMIDI 後に midy.timeline / midy.tempo が揃うので、
+    // handlePlay の前に必ず notes を worker へ送る（元の loadMIDI と同じ）
+    await midiPlayer.loadMIDI(new Uint8Array(buf));
+    reloadNotes();
+    libraryModal.hide();
+    await midiPlayer.handlePlay();
+  },
+});
+midiLibrary.load();
+
+// ---------------------------------------------------------------------------
+// soundfont library
+// ---------------------------------------------------------------------------
+
+const SOUNDFONT_BASE = "https://soundfonts.pages.dev/";
+let soundFontListLoaded = false;
+
+async function loadSoundFontLibrary() {
+  const el = document.getElementById("soundFontLibraryList");
+  try {
+    const list = await (await fetch(`${SOUNDFONT_BASE}list.json`)).json();
+    el.innerHTML = "";
+    list.forEach((sf, i) => {
+      const id = `soundFontLibraryItem-${i}`;
+      const checked = sf.name === "GeneralUser_GS_v1.471";
+      const wrap = document.createElement("div");
+      wrap.className = "form-check";
+      wrap.innerHTML =
+        `<input class="form-check-input" type="radio" name="soundFontLibrary" id="${id}" value="${sf.name}" ${
+          checked ? "checked" : ""
+        }>` +
+        `<label class="form-check-label" for="${id}">${sf.name}</label>`;
+      el.appendChild(wrap);
+      if (checked) midiPlayer.soundFontURL = SOUNDFONT_BASE + sf.name;
+    });
+    soundFontListLoaded = true;
+  } catch (err) {
+    console.error("Failed to load SoundFont library:", err);
+    el.textContent = t("soundFontLoadFailed");
+  }
+}
+
+document.getElementById("soundFontLibraryList").addEventListener(
+  "change",
+  (e) => {
+    if (e.target.name !== "soundFontLibrary") return;
+    midiPlayer.soundFontURL = SOUNDFONT_BASE + e.target.value;
+  },
+);
+
+document.getElementById("openSoundFontLibrary").addEventListener(
+  "click",
+  () => {
+    if (!soundFontListLoaded) loadSoundFontLibrary();
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Visualizer
+// ---------------------------------------------------------------------------
 
 class Draggable {
   static defaultOptions = {
@@ -123,81 +211,6 @@ function getGlobalCSS() {
   return sheet;
 }
 
-function setSampleEvents() {
-  document.getElementById("samples").addEventListener("change", (event) => {
-    const target = event.target;
-    switch (target.name) {
-      case "sampleMIDI":
-        getSampleMIDI("https://midi-db.pages.dev/" + target.value);
-        break;
-      case "sampleSoundFont":
-        midiPlayer.soundFontURL = "https://soundfonts.pages.dev/" +
-          target.value;
-        break;
-    }
-  });
-}
-
-async function getSampleMIDI(url) {
-  const response = await fetch(url);
-  const file = await response.blob();
-  await loadMIDI(file);
-}
-
-async function getSampleMIDIList() {
-  const root = document.getElementById("sampleMIDI");
-  const homepageResponse = await fetch(
-    "https://midi-db.pages.dev/collections.json",
-  );
-  const homepageList = await homepageResponse.json();
-  const homepage = homepageList[getRandomInt(0, homepageList.length)];
-  const { license: homepageLicense, maintainer: homepageMaintainer } = homepage;
-  const license = homepageLicense.startsWith("http")
-    ? `<a href="${homepageLicense}">custom</a>`
-    : homepageLicense;
-  const fileResponse = await fetch(
-    `https://midi-db.pages.dev/json/${homepage.id}/${htmlLang}.json`,
-  );
-  const fileList = await fileResponse.json();
-  const longFileList = fileList.filter((f) => !f.time.startsWith("0:"));
-  shuffle(longFileList);
-
-  let html = "";
-  for (let i = 0; i < Math.min(15, longFileList.length); i++) {
-    const file = longFileList[i];
-    const maintainer = homepageMaintainer || file.maintainer;
-    html += `
-<div class="form-check">
-  <label class="form-check-label">
-    <input class="form-check-input" type="radio" name="sampleMIDI" value="${file.file}">
-    ${file.title}, ${maintainer} (${license})
-  </label>
-</div>`;
-  }
-  root.innerHTML = html;
-}
-
-async function getSampleSoundFontList() {
-  const root = document.getElementById("sampleSoundFont");
-  const response = await fetch("https://soundfonts.pages.dev/list.json");
-  const list = await response.json();
-  let html = "";
-  for (const soundFont of list) {
-    const checked = soundFont.name === "GeneralUser_GS_v1.471" ? "checked" : "";
-    const license = soundFont.license.startsWith("http")
-      ? `<a href="${soundFont.license}">custom</a>`
-      : soundFont.license;
-    html += `
-<div class="form-check">
-  <label class="form-check-label">
-    <input class="form-check-input" type="radio" name="sampleSoundFont" value="${soundFont.name}" ${checked}>
-    ${soundFont.name} (${license})
-  </label>
-</div>`;
-  }
-  root.innerHTML = html;
-}
-
 function reloadNotes() {
   // Re-extract notes using the current midy.tempo.
   // Must be called after loadMIDI and after every tempoChange, because
@@ -238,28 +251,6 @@ async function loadFile(file) {
   } else if (ext === "sf2" || ext === "sf3") {
     await loadSoundFont(file);
   }
-}
-
-function setDragEvent() {
-  const selectPanel = document.getElementById("selectPanel");
-  let dragCounter = 0;
-  selectPanel.addEventListener("dragenter", (e) => {
-    e.preventDefault();
-    dragCounter++;
-    selectPanel.classList.add("border", "border-secondary");
-  });
-  selectPanel.addEventListener("dragleave", (e) => {
-    e.preventDefault();
-    if (--dragCounter === 0) {
-      selectPanel.classList.remove("border", "border-secondary");
-    }
-  });
-  selectPanel.addEventListener("dragover", (e) => e.preventDefault());
-  selectPanel.addEventListener("drop", (e) => {
-    e.preventDefault();
-    selectPanel.classList.remove("border", "border-secondary");
-    loadFile(e.dataTransfer.files[0]);
-  });
 }
 
 // ---- Canvas / Worker setup -----------------------------------------------
@@ -678,12 +669,6 @@ document.getElementById("noteOptions.strokeWidth").addEventListener(
   },
 );
 
-const htmlLang = document.documentElement.lang;
-await getSampleMIDIList();
-await getSampleSoundFontList();
-setSampleEvents();
-setDragEvent();
-
 // ---- Audio ---------------------------------------------------------------
 
 const audioContext = new AudioContext();
@@ -692,7 +677,7 @@ const midy = new Midy(audioContext);
 midy.cacheMode = "chunk";
 const midiPlayer = new MIDIPlayer(midy);
 midiPlayer.defaultLayout();
-midiPlayer.applyTheme(getGlobalCSS(), {
+midiPlayer.applyTheme(globalCSS, {
   "midi-player-btn": "btn bg-light-subtle p-1",
   "midi-player-text": "p-1",
   "midi-player-range": "form-range",
@@ -969,14 +954,41 @@ midy.addEventListener("tempoChanged", onTempoChanged);
 // ---- UI events -----------------------------------------------------------
 
 document.getElementById("toggleDarkMode").onclick = toggleDarkMode;
-document.getElementById("selectFile").onclick = () =>
-  document.getElementById("inputFile").click();
-document.getElementById("inputFile").addEventListener(
-  "change",
-  (e) => loadFile(e.target.files[0]),
-);
 
-globalThis.addEventListener("paste", (e) => {
-  const file = e.clipboardData.items[0]?.getAsFile();
-  if (file) loadFile(file);
+document.getElementById("selectFile").addEventListener(
+  "click",
+  () => document.getElementById("inputFile").click(),
+);
+document.getElementById("inputFile").addEventListener("change", (e) => {
+  loadFile(e.target.files[0]);
+  e.target.value = "";
+});
+document.addEventListener("paste", (e) => {
+  const f = e.clipboardData?.items[0]?.getAsFile();
+  if (f) loadFile(f);
+});
+
+const selectPanel = document.getElementById("selectPanel");
+let dragN = 0;
+selectPanel.addEventListener("dragenter", (e) => {
+  e.preventDefault();
+  if (++dragN === 1) {
+    selectPanel.classList.add("drag-active");
+  }
+});
+selectPanel.addEventListener("dragleave", (e) => {
+  e.preventDefault();
+  if (--dragN === 0) {
+    selectPanel.classList.remove("drag-active");
+  }
+});
+selectPanel.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "copy";
+});
+selectPanel.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dragN = 0;
+  selectPanel.classList.remove("drag-active");
+  loadFile(e.dataTransfer.files[0]);
 });
