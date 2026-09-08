@@ -695,18 +695,43 @@ let isRecording = false;
 const recordCanvas = document.createElement("canvas");
 const recordCtx = recordCanvas.getContext("2d");
 
-function getSupportedMimeType() {
-  const candidates = [
+function isMp4RecordingSupported() {
+  if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) {
+    return false;
+  }
+  const mp4Candidates = [
+    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+    "video/mp4;codecs=avc1.42E01E",
+    "video/mp4",
+  ];
+  return mp4Candidates.some((t) => MediaRecorder.isTypeSupported(t));
+}
+
+function getSupportedMimeType(preferMp4 = false) {
+  const mp4Candidates = [
+    "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+    "video/mp4;codecs=avc1.42E01E",
+    "video/mp4",
+  ];
+  const webmCandidates = [
     "video/webm;codecs=vp9,opus",
     "video/webm;codecs=vp8,opus",
     "video/webm;codecs=vp9",
     "video/webm;codecs=vp8",
     "video/webm",
   ];
+  const candidates = preferMp4
+    ? [...mp4Candidates, ...webmCandidates]
+    : webmCandidates;
   for (const t of candidates) {
     if (MediaRecorder.isTypeSupported(t)) return t;
   }
   return "";
+}
+
+function getRecordExtension(mimeType) {
+  if (mimeType.startsWith("video/mp4")) return "mp4";
+  return "webm";
 }
 
 function getRecordSize() {
@@ -790,7 +815,9 @@ async function startRecording() {
   if (isRecording) return;
   if (audioContext.state === "suspended") await audioContext.resume();
 
-  const mimeType = getSupportedMimeType();
+  const formatEl = document.getElementById("recordFormat");
+  const preferMp4 = formatEl?.value === "mp4";
+  const mimeType = getSupportedMimeType(preferMp4);
   if (!mimeType) {
     alert("MediaRecorder is not supported in this browser.");
     return;
@@ -821,11 +848,14 @@ async function startRecording() {
     if (e.data.size > 0) recordedChunks.push(e.data);
   };
   mediaRecorder.onstop = () => {
-    const blob = new Blob(recordedChunks, { type: mimeType });
+    // Use the actual mimeType chosen by MediaRecorder when available
+    const actualMime = mediaRecorder?.mimeType || mimeType;
+    const ext = getRecordExtension(actualMime);
+    const blob = new Blob(recordedChunks, { type: actualMime });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `piano-visualizer-${Date.now()}.webm`;
+    a.download = `piano-visualizer-${Date.now()}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
     cleanupRecording();
@@ -869,6 +899,24 @@ document.getElementById("recordBtn").addEventListener("click", () => {
   if (isRecording) stopRecording();
   else startRecording();
 });
+
+// Show MP4 option only when MediaRecorder natively supports video/mp4
+(function initRecordFormatOptions() {
+  const formatEl = document.getElementById("recordFormat");
+  if (!formatEl) return;
+  const mp4Option = formatEl.querySelector('option[value="mp4"]');
+  if (!mp4Option) return;
+  if (isMp4RecordingSupported()) {
+    mp4Option.hidden = false;
+    mp4Option.disabled = false;
+    // Prefer MP4 when available (better for X / social upload)
+    formatEl.value = "mp4";
+  } else {
+    mp4Option.hidden = true;
+    mp4Option.disabled = true;
+    formatEl.value = "webm";
+  }
+})();
 
 // stop recording when playback ends
 midy.addEventListener("stopped", () => {
