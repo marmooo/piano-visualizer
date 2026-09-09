@@ -57,6 +57,8 @@ Particle</label><hr><label class="form-check form-check-inline"><input class=for
 </button>
 <label class=d-block>Format:
 <select class="form-select form-select-sm" id=recordFormat><option value=webm>WebM<option value=mp4 hidden disabled>MP4</select>
+</label><label class="form-check d-none" id=recordAacForXLabel><input class=form-check-input type=checkbox id=recordAacForX>
+AAC audio (for X)
 </label><label class=d-block>FPS:
 <select class="form-select form-select-sm" id=recordFps><option value=15>15<option value=24>24<option value=30 selected>30<option value=60>60</select>
 </label><label class=d-block>Quality:
@@ -74,4 +76,10 @@ pagination page-item page-link active
 form-check form-check-label
 form-select form-select-sm p-1 border border-secondary
 list-group shadow-sm list-group-item py-1 px-2
-d-none"><input class=form-check-input type=radio></div><script type=module src=/piano-visualizer/index.js></script>
+d-none"><input class=form-check-input type=radio></div><script type=importmap>
+    {
+      "imports": {
+        "mediabunny": "https://cdn.jsdelivr.net/npm/mediabunny@1.56.0/+esm"
+      }
+    }
+    </script><script type=module src=/piano-visualizer/index.js></script>

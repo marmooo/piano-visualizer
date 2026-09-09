@@ -3,6 +3,22 @@ import { MIDIPlayer } from "https://cdn.jsdelivr.net/npm/@marmooo/midi-player@0.
 import { extractNotesFromMidy } from "./piano-visualizer.js";
 import { Modal } from "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/+esm";
 import { MidiLibrary } from "https://marmooo.github.io/free-midi/midi-library.js";
+// mediabunny: pin exact CDN URL (must match importmap "mediabunny" target).
+// aac-encoder is NOT statically imported — loaded only when AAC polyfill is needed.
+import {
+  Input,
+  Output,
+  Conversion,
+  ALL_FORMATS,
+  BlobSource,
+  BufferTarget,
+  Mp4OutputFormat,
+  canEncodeAudio,
+} from "https://cdn.jsdelivr.net/npm/mediabunny@1.56.0/+esm";
+
+/** Absolute URL so bundlers leave this as a runtime fetch (not inlined into the main chunk). */
+const MEDIABUNNY_AAC_ENCODER_URL =
+  "https://cdn.jsdelivr.net/npm/@mediabunny/aac-encoder@1.56.0/dist/bundles/mediabunny-aac-encoder.mjs";
 
 const htmlLang = document.documentElement.lang;
 const globalCSS = getGlobalCSS();
@@ -811,15 +827,107 @@ function stopRecordLoop() {
   }
 }
 
+/**
+ * Re-mux MP4 for X: copy video, re-encode audio to AAC only.
+ *
+ *   ffmpeg -i in.mp4 -c:v copy -c:a aac -b:a 128k -ar 44100 -ac 2 \
+ *     -movflags +faststart out.mp4
+ *
+ * Video is never re-encoded (no H.264 encode / license / time cost).
+ * Source is expected to already be MP4 from MediaRecorder.
+ */
+async function convertToAacForX(inputBlob) {
+  // Prefer native WebCodecs AAC. Only if missing, lazy-load the WASM polyfill.
+  // Absolute URL import keeps aac-encoder out of the main bundle; importmap makes
+  // its bare "mediabunny" resolve to the same module instance as this file.
+  if (!(await canEncodeAudio("aac"))) {
+    try {
+      const { registerAacEncoder } = await import(MEDIABUNNY_AAC_ENCODER_URL);
+      registerAacEncoder();
+    } catch (e) {
+      console.warn("Could not load @mediabunny/aac-encoder:", e);
+      throw new Error(
+        "AAC encoding is unavailable: native WebCodecs AAC is missing and the mediabunny AAC polyfill failed to load. " +
+          (e?.message || String(e)),
+      );
+    }
+    if (!(await canEncodeAudio("aac"))) {
+      throw new Error(
+        "AAC polyfill loaded but canEncodeAudio('aac') is still false (mediabunny instance mismatch?).",
+      );
+    }
+  }
+
+  const input = new Input({
+    source: new BlobSource(inputBlob),
+    formats: ALL_FORMATS,
+  });
+
+  const output = new Output({
+    format: new Mp4OutputFormat({ fastStart: "in-memory" }),
+    target: new BufferTarget(),
+  });
+
+  const conversion = await Conversion.init({
+    input,
+    output,
+    // Do NOT set video options → mediabunny copies the video bitstream as-is.
+    audio: {
+      codec: "aac",
+      bitrate: 128_000,
+      sampleRate: 44_100,
+      numberOfChannels: 2,
+      forceTranscode: true,
+    },
+  });
+
+  if (!conversion.isValid) {
+    const reasons = (conversion.discardedTracks || [])
+      .map((t) => `${t.type}: ${t.reason}`)
+      .join("; ");
+    throw new Error(
+      "Conversion invalid" + (reasons ? `: ${reasons}` : ""),
+    );
+  }
+
+  const discardedAudio = (conversion.discardedTracks || []).filter(
+    (t) => t.type === "audio" || t.track?.type === "audio",
+  );
+  if (discardedAudio.length) {
+    throw new Error(
+      "Audio track discarded: " +
+        discardedAudio.map((t) => t.reason || "unknown").join("; "),
+    );
+  }
+
+  await conversion.execute();
+  const buffer = output.target.buffer;
+  if (!buffer || buffer.byteLength < 32) {
+    throw new Error("Conversion produced an empty file.");
+  }
+  return new Blob([buffer], { type: "video/mp4" });
+}
+
 async function startRecording() {
   if (isRecording) return;
   if (audioContext.state === "suspended") await audioContext.resume();
 
   const formatEl = document.getElementById("recordFormat");
-  const preferMp4 = formatEl?.value === "mp4";
+  const aacForX = document.getElementById("recordAacForX")?.checked;
+  // AAC path requires MP4 so video can be bitstream-copied (no H.264 re-encode).
+  // (Checkbox is only visible when Format is MP4.)
+  const preferMp4 = formatEl?.value === "mp4" || aacForX;
   const mimeType = getSupportedMimeType(preferMp4);
   if (!mimeType) {
     alert("MediaRecorder is not supported in this browser.");
+    return;
+  }
+  if (aacForX && !mimeType.startsWith("video/mp4")) {
+    alert(
+      "AAC (for X) needs MediaRecorder MP4, but this browser only supports: " +
+        (mimeType || "(none)") +
+        "\n\nChrome / Edge でお試しください（Firefox は MP4 録画非対応のことが多いです）。",
+    );
     return;
   }
 
@@ -847,11 +955,27 @@ async function startRecording() {
   mediaRecorder.ondataavailable = (e) => {
     if (e.data.size > 0) recordedChunks.push(e.data);
   };
-  mediaRecorder.onstop = () => {
+  mediaRecorder.onstop = async () => {
     // Use the actual mimeType chosen by MediaRecorder when available
     const actualMime = mediaRecorder?.mimeType || mimeType;
-    const ext = getRecordExtension(actualMime);
-    const blob = new Blob(recordedChunks, { type: actualMime });
+    let ext = getRecordExtension(actualMime);
+    let blob = new Blob(recordedChunks, { type: actualMime });
+
+    if (aacForX) {
+      try {
+        const btn = document.getElementById("recordBtn");
+        if (btn) btn.textContent = "⏳ Converting…";
+        blob = await convertToAacForX(blob);
+        ext = "mp4";
+      } catch (err) {
+        console.error("AAC conversion failed, downloading original:", err);
+        alert(
+          "AAC conversion failed. Downloading the original recording instead.\n" +
+            (err?.message || String(err)),
+        );
+      }
+    }
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -900,22 +1024,41 @@ document.getElementById("recordBtn").addEventListener("click", () => {
   else startRecording();
 });
 
-// Show MP4 option only when MediaRecorder natively supports video/mp4
+// Show MP4 option only when MediaRecorder natively supports video/mp4.
+// AAC checkbox is only relevant for MP4 (WebM cannot carry AAC for X).
 (function initRecordFormatOptions() {
   const formatEl = document.getElementById("recordFormat");
   if (!formatEl) return;
   const mp4Option = formatEl.querySelector('option[value="mp4"]');
-  if (!mp4Option) return;
-  if (isMp4RecordingSupported()) {
-    mp4Option.hidden = false;
-    mp4Option.disabled = false;
-    // Prefer MP4 when available (better for X / social upload)
-    formatEl.value = "mp4";
-  } else {
-    mp4Option.hidden = true;
-    mp4Option.disabled = true;
-    formatEl.value = "webm";
+  const aacLabel = document.getElementById("recordAacForXLabel");
+  const aacCheck = document.getElementById("recordAacForX");
+
+  function syncAacVisibility() {
+    const isMp4 = formatEl.value === "mp4";
+    // Use Bootstrap d-none: author CSS (d-block / form-check) overrides the
+    // HTML `hidden` attribute, so the checkbox stayed visible on WebM.
+    if (aacLabel) {
+      aacLabel.classList.toggle("d-none", !isMp4);
+      aacLabel.classList.toggle("d-block", isMp4);
+    }
+    if (!isMp4 && aacCheck) aacCheck.checked = false;
   }
+
+  if (mp4Option) {
+    if (isMp4RecordingSupported()) {
+      mp4Option.hidden = false;
+      mp4Option.disabled = false;
+      // Prefer MP4 when available (better for X / social upload)
+      formatEl.value = "mp4";
+    } else {
+      mp4Option.hidden = true;
+      mp4Option.disabled = true;
+      formatEl.value = "webm";
+    }
+  }
+
+  formatEl.addEventListener("change", syncAacVisibility);
+  syncAacVisibility();
 })();
 
 // stop recording when playback ends
