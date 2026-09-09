@@ -923,7 +923,7 @@ async function startRecording() {
     alert(
       "AAC (for X) needs MediaRecorder MP4, but this browser only supports: " +
         (mimeType || "(none)") +
-        "\n\nChrome / Edge でお試しください（Firefox は MP4 録画非対応のことが多いです）。",
+        "\n\nPlease try it with Chrome or Edge.",
     );
     return;
   }
