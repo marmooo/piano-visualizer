@@ -5,7 +5,7 @@ deno bundle --allow-import \
   --platform=browser \
   --format=esm \
   -o docs/index.js \
-  --external=https://cdn.jsdelivr.net/npm/mediabunny@1.56.0/+esm \
+  --external=mediabunny \
   --external=https://cdn.jsdelivr.net/* \
   --external=https://cdn.jsdelivr.net/gh/* \
   --external=https://marmooo.github.io/* \

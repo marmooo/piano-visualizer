@@ -3,8 +3,6 @@ import { MIDIPlayer } from "https://cdn.jsdelivr.net/npm/@marmooo/midi-player@0.
 import { extractNotesFromMidy } from "./piano-visualizer.js";
 import { Modal } from "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/+esm";
 import { MidiLibrary } from "https://marmooo.github.io/free-midi/midi-library.js";
-// mediabunny: pin exact CDN URL (must match importmap "mediabunny" target).
-// aac-encoder is NOT statically imported — loaded only when AAC polyfill is needed.
 import {
   Input,
   Output,
@@ -14,9 +12,8 @@ import {
   BufferTarget,
   Mp4OutputFormat,
   canEncodeAudio,
-} from "https://cdn.jsdelivr.net/npm/mediabunny@1.56.0/+esm";
+} from "mediabunny";
 
-/** Absolute URL so bundlers leave this as a runtime fetch (not inlined into the main chunk). */
 const MEDIABUNNY_AAC_ENCODER_URL =
   "https://cdn.jsdelivr.net/npm/@mediabunny/aac-encoder@1.56.0/dist/bundles/mediabunny-aac-encoder.mjs";
 

@@ -1,6 +1,6 @@
 {
   "imports": {
-    "mediabunny": "https://cdn.jsdelivr.net/npm/mediabunny@1.56.0/+esm"
+    "mediabunny": "npm:mediabunny@^1.56.0"
   },
   "nodeModulesDir": "none"
 }
