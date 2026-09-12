@@ -6,8 +6,7 @@ deno bundle --allow-import \
   --format=esm \
   -o docs/index.js \
   --external=mediabunny \
-  --external=https://cdn.jsdelivr.net/* \
-  --external=https://cdn.jsdelivr.net/gh/* \
+  --external=https://cdn.jsdelivr.net/npm/@mediabunny/* \
   --external=https://marmooo.github.io/* \
   src/index.js
 minify -r docs -o .
