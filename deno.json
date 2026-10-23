@@ -1,6 +1,6 @@
 {
   "imports": {
-    "mediabunny": "npm:mediabunny@^1.56.0"
+    "mediabunny": "npm:mediabunny@^1.62.0"
   },
   "nodeModulesDir": "none"
 }

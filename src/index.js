@@ -20,7 +20,7 @@ const MIDI_DB_CLASSICAL = "https://marmooo.github.io/classical-midi-db";
 let currentMidiDb = MIDI_DB_MODERN;
 
 const MEDIABUNNY_AAC_ENCODER_URL =
-  "https://cdn.jsdelivr.net/npm/@mediabunny/aac-encoder@1.56.0/dist/bundles/mediabunny-aac-encoder.mjs";
+  "https://cdn.jsdelivr.net/npm/@mediabunny/aac-encoder@1.62.0/dist/bundles/mediabunny-aac-encoder.mjs";
 
 const htmlLang = document.documentElement.lang;
 const globalCSS = getGlobalCSS();
