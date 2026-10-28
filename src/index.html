@@ -132,8 +132,12 @@
         <div class="card-body py-3 px-3 d-flex flex-wrap gap-2 align-items-center justify-content-center">
           <button id="selectFile" class="btn btn-primary rounded-pill">Select file</button>
           <input id="inputFile" type="file" accept=".mid,.midi,.sf2,.sf3,audio/*" hidden="">
-          <button id="openLibrary" class="btn btn-outline-info rounded-pill" data-bs-toggle="modal" data-bs-target="#screenLibrary">🎼 Select from MIDI library</button>
-          <button id="openSoundFontLibrary" class="btn btn-outline-success rounded-pill" data-bs-toggle="modal" data-bs-target="#soundFontLibraryModal">🎺 Select from SoundFont library</button>
+          <button id="openLibrary" class="btn btn-outline-info rounded-pill" data-bs-toggle="modal" data-bs-target="#screenLibrary">🎼 MIDI library</button>
+          <button id="openSoundFontLibrary" class="btn btn-outline-success rounded-pill" data-bs-toggle="modal" data-bs-target="#soundFontLibraryModal">🎺 SoundFont</button>
+          <div id="midiInfo" class="text-center small" hidden>
+            <div id="title" class="fw-semibold text-break"></div>
+            <div id="meta" class="text-body-secondary"></div>
+          </div>
         </div>
       </div>
       <div id="midi-player"></div>
@@ -526,6 +530,7 @@
       form-check form-check-label
       form-select form-select-sm p-1 border border-secondary
       list-group shadow-sm list-group-item py-1 px-2
+      badge bg-body-secondary text-body border fw-normal ms-2 text-decoration-none
       d-none">
       <input class="form-check-input" type="radio">
     </div>

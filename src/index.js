@@ -51,6 +51,7 @@ const midiLibrary = new MidiLibrary({
     // loadMIDI 後に midy.timeline / midy.tempo が揃うので、
     // handlePlay の前に必ず notes を worker へ送る（元の loadMIDI と同じ）
     await midiPlayer.loadMIDI(new Uint8Array(buf));
+    setMIDIInfo(toInfoQuery(row));
     reloadNotes();
     libraryModal.hide();
     await midiPlayer.handlePlay();
@@ -281,8 +282,118 @@ function onTempoChanged() {
   worker.postMessage({ type: "tick", currentTime: midy.resumeTime });
 }
 
+function toHttpURL(text) {
+  try {
+    const url = new URL(text);
+    if (url.protocol === "http:" || url.protocol === "https:") return url.href;
+  } catch { /* not a valid URL */ }
+  return null;
+}
+
+function createExternalLink(href, text) {
+  const a = document.createElement("a");
+  a.href = href;
+  a.textContent = text;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  return a;
+}
+
+// Shows "title" and "composer · maintainer [license]" of the MIDI.
+// The query string is untrusted, so only http(s) links are accepted.
+function setMIDIInfo(query) {
+  const info = document.getElementById("midiInfo");
+  const title = document.getElementById("title");
+  const meta = document.getElementById("meta");
+  meta.replaceChildren();
+  if (!(query instanceof URLSearchParams)) {
+    title.textContent = "";
+    info.hidden = true;
+    return;
+  }
+  const titleText = query.get("title") ?? "";
+  const composer = query.get("composer") ?? "";
+  const maintainer = query.get("maintainer") ?? "";
+  const web = query.get("web") ?? "";
+  const license = query.get("license") ?? "";
+
+  const credits = [];
+  if (composer) {
+    const span = document.createElement("span");
+    span.textContent = composer;
+    credits.push(span);
+  }
+  if (maintainer) {
+    const webURL = web ? toHttpURL(web) : null;
+    if (webURL) {
+      credits.push(createExternalLink(webURL, maintainer));
+    } else {
+      const span = document.createElement("span");
+      span.textContent = maintainer;
+      credits.push(span);
+    }
+  }
+  for (let i = 0; i < credits.length; i++) {
+    if (i > 0) meta.appendChild(document.createTextNode(" · "));
+    meta.appendChild(credits[i]);
+  }
+
+  if (license) {
+    const licenseURL = toHttpURL(license);
+    let badge;
+    if (licenseURL) {
+      badge = createExternalLink(licenseURL, "License");
+      badge.classList.add("text-decoration-none");
+    } else {
+      badge = document.createElement("span");
+      badge.textContent = license;
+    }
+    badge.classList.add(
+      "badge",
+      "bg-body-secondary",
+      "text-body",
+      "border",
+      "fw-normal",
+    );
+    if (credits.length > 0) badge.classList.add("ms-2");
+    meta.appendChild(badge);
+  }
+
+  title.textContent = titleText;
+  info.hidden = titleText === "" && meta.childNodes.length === 0;
+}
+
+// Convert a MIDI library row into the same query that ?url= links carry,
+// so that both entry points go through setMIDIInfo().
+function toInfoQuery(row) {
+  const query = new URLSearchParams();
+  const fields = ["title", "composer", "maintainer", "web", "license"];
+  for (let i = 0; i < fields.length; i++) {
+    const value = row[fields[i]];
+    if (value) query.set(fields[i], value);
+  }
+  return query;
+}
+
+async function loadMIDIFromQuery() {
+  const query = new URLSearchParams(location.search);
+  const url = query.get("url");
+  if (!url) return;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`${response.status} ${response.statusText}`);
+    }
+    await loadMIDI(await response.blob());
+    setMIDIInfo(query);
+  } catch (error) {
+    console.error(`Failed to load ${url}:`, error);
+  }
+}
+
 async function loadMIDI(file) {
   if (!file) return;
+  setMIDIInfo();
   await midiPlayer.handleStop();
   const arrayBuffer = await file.arrayBuffer();
   const uint8Array = new Uint8Array(arrayBuffer);
@@ -1220,3 +1331,5 @@ selectPanel.addEventListener("drop", (e) => {
   selectPanel.classList.remove("drag-active");
   loadFile(e.dataTransfer.files[0]);
 });
+
+loadMIDIFromQuery();
