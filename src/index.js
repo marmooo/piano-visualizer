@@ -375,19 +375,51 @@ function toInfoQuery(row) {
   return query;
 }
 
+/**
+ * ?c=<siteId>&i=<index>（classical は &db=c）から曲を読み込む。
+ * free-midi からの共有リンク専用（旧 ?url= は廃止）。
+ */
 async function loadMIDIFromQuery() {
   const query = new URLSearchParams(location.search);
-  const url = query.get("url");
-  if (!url) return;
+  const collectionId = query.get("c");
+  const index = Number.parseInt(query.get("i") ?? "", 10);
+  if (!collectionId || !Number.isInteger(index) || index < 0) return;
+
   try {
-    const response = await fetch(url);
+    const dbBase = query.get("db") === "c" ? MIDI_DB_CLASSICAL : MIDI_DB_MODERN;
+    const lang = ["ja", "en"].includes(htmlLang) ? htmlLang : "en";
+    const listUrl = `${dbBase}/json/${
+      encodeURIComponent(collectionId)
+    }/${lang}.json`;
+    const list = await (await fetch(listUrl)).json();
+    const row = list[index];
+    if (!row?.file) {
+      throw new Error(`MIDI not found: ${collectionId}#${index}`);
+    }
+
+    const col = midiLibrary.collections?.get(collectionId);
+    if (col) {
+      if (!row.collection) row.collection = col.name;
+      if (!row.composer && col.composer) row.composer = col.composer;
+      if (!row.maintainer && col.maintainer) row.maintainer = col.maintainer;
+      if (!row.web && col.web) row.web = col.web;
+      if (!row.license && col.license) row.license = col.license;
+    }
+
+    if (dbBase !== midiLibrary.midiDB) {
+      currentMidiDb = dbBase;
+      midiLibrary.midiDB = dbBase;
+    }
+
+    const midiUrl = `${dbBase}/${row.file}`;
+    const response = await fetch(midiUrl);
     if (!response.ok) {
       throw new Error(`${response.status} ${response.statusText}`);
     }
     await loadMIDI(await response.blob());
-    setMIDIInfo(query);
+    setMIDIInfo(toInfoQuery(row));
   } catch (error) {
-    console.error(`Failed to load ${url}:`, error);
+    console.error("Failed to load MIDI from query:", error);
   }
 }
 
