@@ -1,4 +1,3 @@
-import { Midy } from "https://cdn.jsdelivr.net/gh/marmooo/midy@0.7.3/dist/midy.wasm.js";
 import { MIDIPlayer } from "https://cdn.jsdelivr.net/npm/@marmooo/midi-player@0.0.9/+esm";
 import { extractNotesFromMidy } from "./piano-visualizer.js";
 import { Modal } from "https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/+esm";
@@ -13,6 +12,54 @@ import {
   Mp4OutputFormat,
   Output,
 } from "mediabunny";
+import {
+  simd as detectSimd,
+  threads as detectThreads,
+} from "https://cdn.jsdelivr.net/npm/wasm-feature-detect@1.10.1/dist/esm/index.js";
+
+// ---------------------------------------------------------------------------
+// Cross-origin isolation is established early via the inline <script> in
+// <head> (SW registration + one-time reload). Here we only log the status
+// and fall back gracefully if isolation is still missing.
+// ---------------------------------------------------------------------------
+if (!globalThis.crossOriginIsolated) {
+  console.warn(
+    "[piano-visualizer] crossOriginIsolated=false — SharedArrayBuffer / wasm-threads may be unavailable. " +
+      "If this is the first visit, a reload should have been triggered by the early SW script.",
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Select midy WASM build via wasm-feature-detect
+// Priority: threaded-simd > threads > simd > plain wasm
+// ---------------------------------------------------------------------------
+const MIDY_BASE = "https://cdn.jsdelivr.net/gh/marmooo/midy@0.7.5/dist";
+const MIDY_BUILDS = {
+  "threaded-simd": `${MIDY_BASE}/midy.wasm-threaded-simd.js`,
+  "threads": `${MIDY_BASE}/midy.wasm-threads.js`,
+  "simd": `${MIDY_BASE}/midy.wasm-simd.js`,
+  "wasm": `${MIDY_BASE}/midy.wasm.js`,
+};
+
+async function selectMidyBuild() {
+  const [hasSimd, hasThreads] = await Promise.all([
+    detectSimd(),
+    detectThreads(),
+  ]);
+  let key;
+  if (hasThreads && hasSimd) key = "threaded-simd";
+  else if (hasThreads) key = "threads";
+  else if (hasSimd) key = "simd";
+  else key = "wasm";
+  console.info(
+    `[piano-visualizer] midy build: ${key} (simd=${hasSimd}, threads=${hasThreads}, crossOriginIsolated=${!!globalThis
+      .crossOriginIsolated})`,
+  );
+  return { key, url: MIDY_BUILDS[key] };
+}
+
+const { url: midyUrl } = await selectMidyBuild();
+const { Midy } = await import(midyUrl);
 
 const MIDI_DB_MODERN = "https://midi-db.pages.dev";
 const MIDI_DB_CLASSICAL = "https://marmooo.github.io/classical-midi-db";
@@ -871,7 +918,6 @@ document.getElementById("noteOptions.strokeWidth").addEventListener(
 const audioContext = new AudioContext();
 if (audioContext.state === "running") await audioContext.suspend();
 const midy = new Midy(audioContext);
-midy.cacheMode = "chunk";
 const midiPlayer = new MIDIPlayer(midy);
 midiPlayer.defaultLayout();
 midiPlayer.applyTheme(globalCSS, {
@@ -1256,11 +1302,12 @@ midy.addEventListener("ended", () => {
 // before audio starts. timeOffset = -startDelay shifts the note display
 // backward in time by the same amount as the audio start delay.
 function applyStartDelay(delay) {
-  midy.startDelay = delay;
+  const d = midy.cacheMode === "audio" ? 0 : delay;
+  midy.startDelay = d;
   worker.postMessage({
     type: "call",
     method: "updateOption",
-    args: ["timeOffset", -delay],
+    args: ["timeOffset", -d],
   });
 }
 applyStartDelay(2);

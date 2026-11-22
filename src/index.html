@@ -20,6 +20,27 @@
         document.documentElement.setAttribute("data-bs-theme", theme);
       })();
     </script>
+    <!-- Early Service Worker registration for COOP/COEP (SharedArrayBuffer) -->
+    <script>
+      (function () {
+        if (!("serviceWorker" in navigator)) return;
+        const SW_URL = "/piano-visualizer/sw.js";
+        const SW_SCOPE = "/piano-visualizer/";
+        const KEY = "piano-visualizer-coi-reloaded";
+        navigator.serviceWorker.register(SW_URL, { scope: SW_SCOPE }).then(function () {
+          // Already controlled → isolation headers are active
+          if (navigator.serviceWorker.controller) return;
+          // First visit: force one reload so the SW can inject COOP/COEP
+          if (!sessionStorage.getItem(KEY)) {
+            sessionStorage.setItem(KEY, "1");
+            location.reload();
+          }
+        }).catch(function (err) {
+          console.warn("[piano-visualizer] SW registration failed:", err);
+        });
+      })();
+    </script>
+
     <!-- Global site tag (gtag.js) - Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-F2179JXDYY"></script>
     <script>
