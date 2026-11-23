@@ -195,12 +195,19 @@ document.getElementById("openSoundFontLibrary").addEventListener(
 class Draggable {
   static defaultOptions = {
     offset: 10,
+    // a finger needs a wider edge to grab than a mouse pointer does
+    touchOffset: 16,
+    // pointer travel (px) before a press counts as a drag
+    dragThreshold: 4,
   };
   static draggableElements = new Set();
   static highestZIndex = 1;
   element;
   options = {};
   isDragging = false;
+  pointerId = null;
+  moved = false; // the pointer moved far enough to be a drag, not a tap
+  suppressClick = false;
   startX;
   startY;
   initialLeft;
@@ -219,6 +226,11 @@ class Draggable {
     this.element.addEventListener("pointerdown", this.onPointerDown);
     this.element.addEventListener("pointermove", this.onPointerMove);
     this.element.addEventListener("pointerup", this.onPointerUp);
+    // A touch that the browser takes over for scrolling / zooming ends with
+    // pointercancel, and capture can be lost without a pointerup.
+    this.element.addEventListener("pointercancel", this.onPointerUp);
+    this.element.addEventListener("lostpointercapture", this.onPointerUp);
+    this.element.addEventListener("click", this.onClick, true);
     if (!this.element.style.zIndex) {
       Draggable.highestZIndex += 1;
       this.element.style.zIndex = Draggable.highestZIndex;
@@ -226,54 +238,98 @@ class Draggable {
   }
 
   isInBorder(event) {
-    const { offset, handle } = this.options;
+    const { offset, touchOffset, handle } = this.options;
     if (handle && handle.contains(event.target)) return true;
+    const edge = event.pointerType === "mouse" ? offset : touchOffset;
     const rect = this.element.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
-    if (x <= offset) return true;
-    if (y <= offset) return true;
-    if (rect.width - x <= offset) return true;
-    if (rect.height - y <= offset) return true;
+    if (x <= edge) return true;
+    if (y <= edge) return true;
+    if (rect.width - x <= edge) return true;
+    if (rect.height - y <= edge) return true;
     return false;
   }
 
+  // Keep the panel reachable: it can not be dragged out of its parent. When
+  // it is larger than the parent it can still be moved to see all of it.
+  clamp(value, elementSize, parentSize) {
+    const room = parentSize - elementSize;
+    return Math.min(Math.max(value, Math.min(0, room)), Math.max(0, room));
+  }
+
   onPointerDown = (event) => {
-    if (event.buttons > 0) {
-      if (!this.isInBorder(event)) return;
-      this.isDragging = true;
-      this.startX = event.clientX;
-      this.startY = event.clientY;
-      this.initialLeft = this.element.offsetLeft;
-      this.initialTop = this.element.offsetTop;
-      this.element.setPointerCapture(event.pointerId);
-      this.element.style.cursor = "grabbing";
-      Draggable.highestZIndex += 1;
-      this.element.style.zIndex = Draggable.highestZIndex;
-    }
+    if (this.isDragging) return; // one pointer at a time
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (!this.isInBorder(event)) return;
+    event.preventDefault();
+    this.isDragging = true;
+    this.moved = false;
+    this.pointerId = event.pointerId;
+    this.startX = event.clientX;
+    this.startY = event.clientY;
+    this.initialLeft = this.element.offsetLeft;
+    this.initialTop = this.element.offsetTop;
+    Draggable.highestZIndex += 1;
+    this.element.style.zIndex = Draggable.highestZIndex;
   };
 
   onPointerMove = (event) => {
-    if (this.isDragging) {
-      const deltaX = event.clientX - this.startX;
-      const deltaY = event.clientY - this.startY;
-      this.element.style.left = this.initialLeft + deltaX + "px";
-      this.element.style.top = this.initialTop + deltaY + "px";
+    if (!this.isDragging || event.pointerId !== this.pointerId) return;
+    const dx = event.clientX - this.startX;
+    const dy = event.clientY - this.startY;
+    if (!this.moved) {
+      if (Math.hypot(dx, dy) < this.options.dragThreshold) return;
+      // Capture only once it is a real drag: a captured pointer sends its
+      // click to the panel, which would stop a tap on a <summary> handle
+      // from toggling it.
+      this.moved = true;
+      this.element.setPointerCapture(event.pointerId);
+      this.element.style.cursor = "grabbing";
     }
+    let left = this.initialLeft + dx;
+    let top = this.initialTop + dy;
+    const parent = this.element.offsetParent;
+    if (parent) {
+      left = this.clamp(left, this.element.offsetWidth, parent.clientWidth);
+      top = this.clamp(top, this.element.offsetHeight, parent.clientHeight);
+    }
+    this.element.style.left = left + "px";
+    this.element.style.top = top + "px";
   };
 
   onPointerUp = (event) => {
-    if (this.isDragging) {
-      this.isDragging = false;
+    if (!this.isDragging || event.pointerId !== this.pointerId) return;
+    this.isDragging = false;
+    this.pointerId = null;
+    if (this.element.hasPointerCapture(event.pointerId)) {
       this.element.releasePointerCapture(event.pointerId);
-      this.element.style.cursor = "grab";
     }
+    this.element.style.cursor = "grab";
+    if (this.moved) {
+      // dropping a handle must not also toggle it (the click comes right
+      // after pointerup, before any timer)
+      this.suppressClick = true;
+      setTimeout(() => {
+        this.suppressClick = false;
+      }, 0);
+    }
+  };
+
+  onClick = (event) => {
+    if (!this.suppressClick) return;
+    this.suppressClick = false;
+    event.preventDefault();
+    event.stopPropagation();
   };
 
   destroy() {
     this.element.removeEventListener("pointerdown", this.onPointerDown);
     this.element.removeEventListener("pointermove", this.onPointerMove);
     this.element.removeEventListener("pointerup", this.onPointerUp);
+    this.element.removeEventListener("pointercancel", this.onPointerUp);
+    this.element.removeEventListener("lostpointercapture", this.onPointerUp);
+    this.element.removeEventListener("click", this.onClick, true);
     Draggable.draggableElements.delete(this.element);
     this.element.style = "";
   }
@@ -532,10 +588,13 @@ function resize() {
 resize();
 globalThis.addEventListener("resize", resize);
 
-// Make the configuration panel draggable. The "Configuration" heading acts
-// as a drag handle in addition to the panel's own border.
+// Make the configuration panel draggable. The "Configuration" summary acts
+// as a drag handle (a tap on it opens / closes the panel) in addition to the
+// panel's own border.
 const controls = document.getElementById("controls");
-new Draggable(controls, { handle: controls.querySelector("h6") });
+new Draggable(controls, {
+  handle: controls.querySelector(":scope > details > summary"),
+});
 
 // ---- Background image / video ---------------------------------------------
 //

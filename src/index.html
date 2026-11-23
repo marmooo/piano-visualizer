@@ -36,8 +36,11 @@
         position:absolute; top:0; left:0; width:100%; height:100%;
         object-fit:cover; object-position:center; pointer-events:none;
       }
-      #controls { width:220px; }
-      #controls h6 { cursor:grab; }
+      /* touch-action: a finger drag on the panel must not scroll / zoom the page */
+      #controls { width:220px; touch-action:none; }
+      #controls > details > summary { cursor:grab; font-weight:600; user-select:none; -webkit-user-select:none; }
+      /* closed: shrink to just the title */
+      #controls:has(> details:not([open])) { width:auto; padding:.5rem .75rem !important; }
       #midi-player { height:34px; }
       #selectPanel.drag-active {
         border-color: var(--bs-warning) !important;
@@ -149,208 +152,210 @@
         <canvas id="keyboardCanvas" class="visualizerCanvas"></canvas>
         <canvas id="lineCanvas" class="visualizerCanvas"></canvas>
         <nav id="controls" class="position-absolute p-3 rounded-3 shadow bg-body-tertiary">
-          <h6>Configuration</h6>
           <details>
-            <summary>Global</summary>
-            <label class="d-block">Speed:
-              <input class="form-range" type="range" id="speedFactor" min="0.1" max="3" step="0.05" value="1">
-            </label>
-            <label class="d-block">Scroll Distance Factor:
-              <input class="form-range" type="range" id="scrollDistanceFactor" min="0.1" max="3" step="0.05" value="1">
-            </label>
-            <label class="d-block">Start Delay:
-              <input class="form-range" type="range" id="startDelay" min="0.1" max="3" step="0.1" value="2">
-            </label>
+            <summary>Configuration</summary>
+            <details>
+              <summary>Global</summary>
+              <label class="d-block">Speed:
+                <input class="form-range" type="range" id="speedFactor" min="0.1" max="3" step="0.05" value="1">
+              </label>
+              <label class="d-block">Scroll Distance Factor:
+                <input class="form-range" type="range" id="scrollDistanceFactor" min="0.1" max="3" step="0.05" value="1">
+              </label>
+              <label class="d-block">Start Delay:
+                <input class="form-range" type="range" id="startDelay" min="0.1" max="3" step="0.1" value="2">
+              </label>
 
-            <div class="pb-3">
-              <select class="form-select form-select-sm d-inline-block" id="backgroundPreset">
-                <option value="">Background: None</option>
-                <option value="./data/nasa-blue-marble.webp">Image 1: NASA Blue Marble</option>
-                <option value="./data/nasa-galaxy.webp">Image 2: NASA Galaxy</option>
-                <option value="./data/nasa-drift-ice.webp">Image 3: NASA Drift Ice</option>
-                <option value="./data/japan-river.webp">Image 4: Japan River</option>
-                <option value="./data/japan-lake.webp">Image 5: Japan Lake</option>
-                <option value="./data/japan-sky.webp">Image 6: Japan Sky</option>
-                <option value="./data/japan-mountain.webp">Image 7: Japan Mountain</option>
-                <option value="./data/japan-pagoda.webp">Image 8: Japan Pagoda</option>
-                <option value="./data/japan-cave.webp">Image 9: Japan Cave</option>
-                <option value="./data/japan-shrine.webp">Image 10: Japan Shrine</option>
-                <option value="./data/fantasy-forest.webp">Image 11: Fantasy Forest</option>
-                <option value="./data/fantasy-lake.webp">Image 12: Fantasy Lake</option>
-                <option value="./data/fantasy-sea.webp">Image 13: Fantasy Sea</option>
-                <option value="./data/fantasy-flare.webp">Image 14: Fantasy Flare</option>
-                <option value="./data/cyber-space.webp">Image 15: Cyber Space</option>
-                <option value="./data/cyber-network.webp">Image 16: Cyber Network</option>
-                <option value="./data/cyber-magic.webp">Image 17: Cyber Magic</option>
-                <option value="./data/movie-earth.webm">Move 1: Earth</option>
-                <option value="./data/movie-matrix-code.webm">Movie 2: Matrix Code</option>
-                <option value="./data/movie-number-stream.webm">Movie 3: Number Stream</option>
-                <option value="./data/movie-water.webm">Movie 4: Water</option>
-                <option value="custom">Custom file...</option>
-              </select>
-              <input class="form-control form-control-sm d-inline-block" type="file" id="backgroundFile" accept="image/*,video/*">
-            </div>
-          </details>
-          <details>
-            <summary>Layout</summary>
-            <label class="d-block">
-              <select class="form-select form-select-sm d-inline-block w-auto" id="noteDirection">
-                <option value="down">⬇</option>
-                <option value="up">⬆</option>
-                <option value="left">⬅</option>
-                <option value="right">➡</option>
-              </select>
-              Note Direction
-            </label>
-            <label class="d-block">
-              <select class="form-select form-select-sm d-inline-block w-auto" id="showPiano">
-                <option value="piano">Piano</option>
-                <option value="line">Line</option>
-                <option value="none">None</option>
-              </select>
-              Piano / Line
-            </label>
-            <label class="d-block">Piano / Line Position:
-              <input class="form-range" type="range" id="effects.pianoPosition" min="0" max="1" step="0.05" value="0">
-            </label>
-          </details>
-          <details>
-            <summary>Colors</summary>
-            <div id="channelColorPickers" class="d-flex flex-wrap gap-2 pt-1 pb-3"></div>
-          </details>
-          <details>
-            <summary>Piano</summary>
-            <label class="d-block">Opacity:
-              <input class="form-range" type="range" id="keyboardOptions.opacity" min="0" max="1" step="0.05" value="1">
-            </label>
-            <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="keyboardOptions.gradientEffect">Gradient</label>
-            <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="keyboardOptions.pressEffect" checked>Press</label>
-            <label class="d-block">Key Aspect Ratio (H / W):
-              <input class="form-range" type="range" id="keyboardOptions.keyAspectRatio" min="1" max="8" step="0.1" value="4">
-            </label>
-          </details>
-          <details>
-            <summary>Line</summary>
-            <label class="d-block">Opacity:
-              <input class="form-range" type="range" id="lineOptions.opacity" min="0" max="1" step="0.05" value="1">
-            </label>
-            <label class="d-block">Color:
-              <input type="color" id="lineOptions.color" value="#888888" class="form-control form-control-color d-inline-block">
-            </label>
-          </details>
-          <details>
-            <summary>Note</summary>
-            <label class="d-block">Thickness:
-              <input class="form-range" type="range" id="noteOptions.thickness" min="0.1" max="2" step="0.05" value="0.7">
-            </label>
-            <label class="d-block">Opacity:
-              <input class="form-range" type="range" id="noteOpacity" min="0" max="1" step="0.05" value="1">
-            </label>
-            <label class="d-block">
-              <select class="form-select form-select-sm d-inline-block w-auto" id="noteOptions.drawMethod">
-                <option value="roundRect">Round</option>
-                <option value="fillRect">Square</option>
-              </select>
-              Corner
-            </label>
-            <label class="form-check d-block">
-              <input class="form-check-input" type="checkbox" id="noteOptions.strokeOnly">
-              Stroke Only
-            </label>
-            <label class="d-block">
-              <select class="form-select form-select-sm d-inline-block w-auto" id="noteOptions.strokeDash">
-                <option value="none">None</option>
-                <option value="dotted">Dotted</option>
-                <option value="dashed">Dashed</option>
-              </select>
-              Stroke Dash
-            </label>
-            <label class="d-block">Stroke Width:
-              <input class="form-range" type="range" id="noteOptions.strokeWidth" min="1" max="10" step="0.5" value="2">
-            </label>
-          </details>
-          <details>
-            <summary>Fog</summary>
-            <div class="d-flex flex-wrap gap-1 pb-1">
-              <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="fog.top">Top</label>
-              <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="fog.bottom">Bottom</label>
-              <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="fog.left">Left</label>
-              <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="fog.right">Right</label>
-              <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="fog.pianoNear">Piano Near</label>
-              <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="fog.pianoFar">Piano Far</label>
-            </div>
-            <label class="d-block">Color:
-              <input type="color" id="fogOptions.color" value="#000000" class="form-control form-control-color d-inline-block">
-            </label>
-            <label class="d-block">Opacity:
-              <input class="form-range" type="range" id="fogOptions.opacity" min="0" max="1" step="0.05" value="0.85">
-            </label>
-            <label class="d-block">Size:
-              <input class="form-range" type="range" id="fogOptions.size" min="0.05" max="0.6" step="0.01" value="0.25">
-            </label>
-          </details>
-          <details>
-            <summary>Effects</summary>
-            <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="effects.glow">Glow (cost++)</label>
-            <label class="d-block">
-              <select class="form-select form-select-sm d-inline-block w-auto" id="particleOptions.type">
-                <option value="none">None</option>
-                <option value="burst" selected>Burst</option>
-                <option value="spark">Spark</option>
-                <option value="steam">Steam</option>
-                <option value="electric">Electric</option>
-                <option value="fire">Fire</option>
-                <option value="star">Star</option>
-                <option value="bubble">Bubble</option>
-                <option value="confetti">Confetti</option>
-              </select>
-              Particle
-            </label>
-            <hr>
-            <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="noteOptions.fadeEffect">Fade</label>
-            <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="effects.bounce">Bounce</label>
-            <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="effects.ignite">Ignite</label>
-          </details>
-          <details>
-            <summary>Record</summary>
-            <button id="recordBtn" type="button" class="btn btn-sm btn-danger mb-2 w-100">
-              ⏺ Start
-            </button>
-            <label class="d-block">Format:
-              <select class="form-select form-select-sm" id="recordFormat">
-                <option value="webm">WebM</option>
-                <option value="mp4" hidden disabled>MP4</option>
-              </select>
-            </label>
-            <label class="form-check d-none" id="recordAacForXLabel">
-              <input class="form-check-input" type="checkbox" id="recordAacForX">
-              AAC audio (for X)
-            </label>
-            <label class="d-block">FPS:
-              <select class="form-select form-select-sm" id="recordFps">
-                <option value="15">15</option>
-                <option value="24">24</option>
-                <option value="30" selected>30</option>
-                <option value="60">60</option>
-              </select>
-            </label>
-            <label class="d-block">Quality:
-              <select class="form-select form-select-sm" id="recordQuality">
-                <option value="2000000">Low (2 Mbps)</option>
-                <option value="5000000">Medium (5 Mbps)</option>
-                <option value="8000000" selected>High (8 Mbps)</option>
-                <option value="15000000">Very High (15 Mbps)</option>
-              </select>
-            </label>
-            <label class="d-block">Resolution:
-              <select class="form-select form-select-sm" id="recordResolution">
-                <option value="1" selected>Display (1×)</option>
-                <option value="1.5">1.5×</option>
-                <option value="2">2× (Retina)</option>
-                <option value="720">720p height</option>
-                <option value="1080">1080p height</option>
-              </select>
-            </label>
+              <div class="pb-3">
+                <select class="form-select form-select-sm d-inline-block" id="backgroundPreset">
+                  <option value="">Background: None</option>
+                  <option value="./data/nasa-blue-marble.webp">Image 1: NASA Blue Marble</option>
+                  <option value="./data/nasa-galaxy.webp">Image 2: NASA Galaxy</option>
+                  <option value="./data/nasa-drift-ice.webp">Image 3: NASA Drift Ice</option>
+                  <option value="./data/japan-river.webp">Image 4: Japan River</option>
+                  <option value="./data/japan-lake.webp">Image 5: Japan Lake</option>
+                  <option value="./data/japan-sky.webp">Image 6: Japan Sky</option>
+                  <option value="./data/japan-mountain.webp">Image 7: Japan Mountain</option>
+                  <option value="./data/japan-pagoda.webp">Image 8: Japan Pagoda</option>
+                  <option value="./data/japan-cave.webp">Image 9: Japan Cave</option>
+                  <option value="./data/japan-shrine.webp">Image 10: Japan Shrine</option>
+                  <option value="./data/fantasy-forest.webp">Image 11: Fantasy Forest</option>
+                  <option value="./data/fantasy-lake.webp">Image 12: Fantasy Lake</option>
+                  <option value="./data/fantasy-sea.webp">Image 13: Fantasy Sea</option>
+                  <option value="./data/fantasy-flare.webp">Image 14: Fantasy Flare</option>
+                  <option value="./data/cyber-space.webp">Image 15: Cyber Space</option>
+                  <option value="./data/cyber-network.webp">Image 16: Cyber Network</option>
+                  <option value="./data/cyber-magic.webp">Image 17: Cyber Magic</option>
+                  <option value="./data/movie-earth.webm">Move 1: Earth</option>
+                  <option value="./data/movie-matrix-code.webm">Movie 2: Matrix Code</option>
+                  <option value="./data/movie-number-stream.webm">Movie 3: Number Stream</option>
+                  <option value="./data/movie-water.webm">Movie 4: Water</option>
+                  <option value="custom">Custom file...</option>
+                </select>
+                <input class="form-control form-control-sm d-inline-block" type="file" id="backgroundFile" accept="image/*,video/*">
+              </div>
+            </details>
+            <details>
+              <summary>Layout</summary>
+              <label class="d-block">
+                <select class="form-select form-select-sm d-inline-block w-auto" id="noteDirection">
+                  <option value="down">⬇</option>
+                  <option value="up">⬆</option>
+                  <option value="left">⬅</option>
+                  <option value="right">➡</option>
+                </select>
+                Note Direction
+              </label>
+              <label class="d-block">
+                <select class="form-select form-select-sm d-inline-block w-auto" id="showPiano">
+                  <option value="piano">Piano</option>
+                  <option value="line">Line</option>
+                  <option value="none">None</option>
+                </select>
+                Piano / Line
+              </label>
+              <label class="d-block">Piano / Line Position:
+                <input class="form-range" type="range" id="effects.pianoPosition" min="0" max="1" step="0.05" value="0">
+              </label>
+            </details>
+            <details>
+              <summary>Colors</summary>
+              <div id="channelColorPickers" class="d-flex flex-wrap gap-2 pt-1 pb-3"></div>
+            </details>
+            <details>
+              <summary>Piano</summary>
+              <label class="d-block">Opacity:
+                <input class="form-range" type="range" id="keyboardOptions.opacity" min="0" max="1" step="0.05" value="1">
+              </label>
+              <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="keyboardOptions.gradientEffect">Gradient</label>
+              <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="keyboardOptions.pressEffect" checked>Press</label>
+              <label class="d-block">Key Aspect Ratio (H / W):
+                <input class="form-range" type="range" id="keyboardOptions.keyAspectRatio" min="1" max="8" step="0.1" value="4">
+              </label>
+            </details>
+            <details>
+              <summary>Line</summary>
+              <label class="d-block">Opacity:
+                <input class="form-range" type="range" id="lineOptions.opacity" min="0" max="1" step="0.05" value="1">
+              </label>
+              <label class="d-block">Color:
+                <input type="color" id="lineOptions.color" value="#888888" class="form-control form-control-color d-inline-block">
+              </label>
+            </details>
+            <details>
+              <summary>Note</summary>
+              <label class="d-block">Thickness:
+                <input class="form-range" type="range" id="noteOptions.thickness" min="0.1" max="2" step="0.05" value="0.7">
+              </label>
+              <label class="d-block">Opacity:
+                <input class="form-range" type="range" id="noteOpacity" min="0" max="1" step="0.05" value="1">
+              </label>
+              <label class="d-block">
+                <select class="form-select form-select-sm d-inline-block w-auto" id="noteOptions.drawMethod">
+                  <option value="roundRect">Round</option>
+                  <option value="fillRect">Square</option>
+                </select>
+                Corner
+              </label>
+              <label class="form-check d-block">
+                <input class="form-check-input" type="checkbox" id="noteOptions.strokeOnly">
+                Stroke Only
+              </label>
+              <label class="d-block">
+                <select class="form-select form-select-sm d-inline-block w-auto" id="noteOptions.strokeDash">
+                  <option value="none">None</option>
+                  <option value="dotted">Dotted</option>
+                  <option value="dashed">Dashed</option>
+                </select>
+                Stroke Dash
+              </label>
+              <label class="d-block">Stroke Width:
+                <input class="form-range" type="range" id="noteOptions.strokeWidth" min="1" max="10" step="0.5" value="2">
+              </label>
+            </details>
+            <details>
+              <summary>Fog</summary>
+              <div class="d-flex flex-wrap gap-1 pb-1">
+                <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="fog.top">Top</label>
+                <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="fog.bottom">Bottom</label>
+                <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="fog.left">Left</label>
+                <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="fog.right">Right</label>
+                <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="fog.pianoNear">Piano Near</label>
+                <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="fog.pianoFar">Piano Far</label>
+              </div>
+              <label class="d-block">Color:
+                <input type="color" id="fogOptions.color" value="#000000" class="form-control form-control-color d-inline-block">
+              </label>
+              <label class="d-block">Opacity:
+                <input class="form-range" type="range" id="fogOptions.opacity" min="0" max="1" step="0.05" value="0.85">
+              </label>
+              <label class="d-block">Size:
+                <input class="form-range" type="range" id="fogOptions.size" min="0.05" max="0.6" step="0.01" value="0.25">
+              </label>
+            </details>
+            <details>
+              <summary>Effects</summary>
+              <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="effects.glow">Glow (cost++)</label>
+              <label class="d-block">
+                <select class="form-select form-select-sm d-inline-block w-auto" id="particleOptions.type">
+                  <option value="none">None</option>
+                  <option value="burst" selected>Burst</option>
+                  <option value="spark">Spark</option>
+                  <option value="steam">Steam</option>
+                  <option value="electric">Electric</option>
+                  <option value="fire">Fire</option>
+                  <option value="star">Star</option>
+                  <option value="bubble">Bubble</option>
+                  <option value="confetti">Confetti</option>
+                </select>
+                Particle
+              </label>
+              <hr>
+              <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="noteOptions.fadeEffect">Fade</label>
+              <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="effects.bounce">Bounce</label>
+              <label class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="effects.ignite">Ignite</label>
+            </details>
+            <details>
+              <summary>Record</summary>
+              <button id="recordBtn" type="button" class="btn btn-sm btn-danger mb-2 w-100">
+                ⏺ Start
+              </button>
+              <label class="d-block">Format:
+                <select class="form-select form-select-sm" id="recordFormat">
+                  <option value="webm">WebM</option>
+                  <option value="mp4" hidden disabled>MP4</option>
+                </select>
+              </label>
+              <label class="form-check d-none" id="recordAacForXLabel">
+                <input class="form-check-input" type="checkbox" id="recordAacForX">
+                AAC audio (for X)
+              </label>
+              <label class="d-block">FPS:
+                <select class="form-select form-select-sm" id="recordFps">
+                  <option value="15">15</option>
+                  <option value="24">24</option>
+                  <option value="30" selected>30</option>
+                  <option value="60">60</option>
+                </select>
+              </label>
+              <label class="d-block">Quality:
+                <select class="form-select form-select-sm" id="recordQuality">
+                  <option value="2000000">Low (2 Mbps)</option>
+                  <option value="5000000">Medium (5 Mbps)</option>
+                  <option value="8000000" selected>High (8 Mbps)</option>
+                  <option value="15000000">Very High (15 Mbps)</option>
+                </select>
+              </label>
+              <label class="d-block">Resolution:
+                <select class="form-select form-select-sm" id="recordResolution">
+                  <option value="1" selected>Display (1×)</option>
+                  <option value="1.5">1.5×</option>
+                  <option value="2">2× (Retina)</option>
+                  <option value="720">720p height</option>
+                  <option value="1080">1080p height</option>
+                </select>
+              </label>
+            </details>
           </details>
         </nav>
       </div>
